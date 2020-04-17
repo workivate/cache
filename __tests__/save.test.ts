@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as path from "path";
 
 import * as cacheHttpClient from "../src/cacheHttpClient";
-import { CacheFilename, Events, Inputs } from "../src/constants";
+import { CacheFilename, Events, Inputs, RefKey } from "../src/constants";
 import { ArtifactCacheEntry } from "../src/contracts";
 import run from "../src/save";
 import * as tar from "../src/tar";
@@ -36,11 +36,6 @@ beforeAll(() => {
         return actualUtils.isValidEvent();
     });
 
-    jest.spyOn(actionUtils, "getSupportedEvents").mockImplementation(() => {
-        const actualUtils = jest.requireActual("../src/utils/actionUtils");
-        return actualUtils.getSupportedEvents();
-    });
-
     jest.spyOn(actionUtils, "resolvePaths").mockImplementation(
         async filePaths => {
             return filePaths.map(x => path.resolve(x));
@@ -54,11 +49,13 @@ beforeAll(() => {
 
 beforeEach(() => {
     process.env[Events.Key] = Events.Push;
+    process.env[RefKey] = "refs/heads/feature-branch";
 });
 
 afterEach(() => {
     testUtils.clearInputs();
     delete process.env[Events.Key];
+    delete process.env[RefKey];
 });
 
 test("save with invalid event outputs warning", async () => {
@@ -66,9 +63,10 @@ test("save with invalid event outputs warning", async () => {
     const failedMock = jest.spyOn(core, "setFailed");
     const invalidEvent = "commit_comment";
     process.env[Events.Key] = invalidEvent;
+    delete process.env[RefKey];
     await run();
     expect(logWarningMock).toHaveBeenCalledWith(
-        `Event Validation Error: The event type ${invalidEvent} is not supported. Only push, pull_request events are supported at this time.`
+        `Event Validation Error: The event type ${invalidEvent} is not supported because it's not tied to a branch or tag ref.`
     );
     expect(failedMock).toHaveBeenCalledTimes(0);
 });

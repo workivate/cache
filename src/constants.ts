@@ -19,4 +19,5 @@ export enum Events {
     PullRequest = "pull_request"
 }
 
+export const RefKey = "GITHUB_REF";
 export const CacheFilename = "cache.tgz";
