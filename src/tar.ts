@@ -6,10 +6,10 @@ import * as path from "path";
 
 import { CacheFilename } from "./constants";
 
-export async function isGnuTar(): Promise<boolean> {
-    core.debug("Checking tar --version");
+async function checkVersion(app: string): Promise<string> {
+    core.debug(`Checking ${app} --version`);
     let versionOutput = "";
-    await exec("tar --version", [], {
+    await exec(`${app} --version`, [], {
         ignoreReturnCode: true,
         silent: true,
         listeners: {
@@ -19,8 +19,19 @@ export async function isGnuTar(): Promise<boolean> {
         }
     });
 
-    core.debug(versionOutput.trim());
-    return versionOutput.toUpperCase().includes("GNU TAR");
+    versionOutput = versionOutput.trim();
+    core.debug(versionOutput);
+    return versionOutput;
+}
+
+export async function useZstd(): Promise<boolean> {
+    const versionOutput = await checkVersion("zstd");
+    return versionOutput.toLowerCase().includes("zstd command line interface");
+}
+
+export async function useGnuTar(): Promise<boolean> {
+    const versionOutput = await checkVersion("tar");
+    return versionOutput.toLowerCase().includes("gnu tar");
 }
 
 async function getTarPath(args: string[]): Promise<string> {
@@ -30,7 +41,7 @@ async function getTarPath(args: string[]): Promise<string> {
         const systemTar = `${process.env["windir"]}\\System32\\tar.exe`;
         if (existsSync(systemTar)) {
             return systemTar;
-        } else if (isGnuTar()) {
+        } else if (await exports.useGnuTar()) {
             args.push("--force-local");
         }
     }
@@ -39,7 +50,7 @@ async function getTarPath(args: string[]): Promise<string> {
 
 async function execTar(args: string[], cwd?: string): Promise<void> {
     try {
-        await exec(`"${await getTarPath(args)}"`, args, { cwd: cwd });
+        await exec(`${await getTarPath(args)}`, args, { cwd: cwd });
     } catch (error) {
         throw new Error(`Tar failed with error: ${error?.message}`);
     }
@@ -54,7 +65,8 @@ export async function extractTar(archivePath: string): Promise<void> {
     const workingDirectory = getWorkingDirectory();
     await io.mkdirP(workingDirectory);
     const args = [
-        "-xz",
+        "-x",
+        (await exports.useZstd()) ? `--use-compress-program="zstd -d"` : "-z",
         "-f",
         archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",
@@ -74,10 +86,11 @@ export async function createTar(
         path.join(archiveFolder, manifestFilename),
         sourceDirectories.join("\n")
     );
-
+    // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
     const workingDirectory = getWorkingDirectory();
     const args = [
-        "-cz",
+        "-c",
+        (await exports.useZstd()) ? `--use-compress-program="zstd -T0"` : "-z",
         "-f",
         CacheFilename.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",

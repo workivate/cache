@@ -4965,11 +4965,11 @@ const io = __importStar(__webpack_require__(1));
 const fs_1 = __webpack_require__(747);
 const path = __importStar(__webpack_require__(622));
 const constants_1 = __webpack_require__(694);
-function isGnuTar() {
+function checkVersion(app) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug("Checking tar --version");
+        core.debug(`Checking ${app} --version`);
         let versionOutput = "";
-        yield exec_1.exec("tar --version", [], {
+        yield exec_1.exec(`${app} --version`, [], {
             ignoreReturnCode: true,
             silent: true,
             listeners: {
@@ -4977,11 +4977,25 @@ function isGnuTar() {
                 stderr: (data) => (versionOutput += data.toString())
             }
         });
-        core.debug(versionOutput.trim());
-        return versionOutput.toUpperCase().includes("GNU TAR");
+        versionOutput = versionOutput.trim();
+        core.debug(versionOutput);
+        return versionOutput;
     });
 }
-exports.isGnuTar = isGnuTar;
+function useZstd() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const versionOutput = yield checkVersion("zstd");
+        return versionOutput.toLowerCase().includes("zstd command line interface");
+    });
+}
+exports.useZstd = useZstd;
+function useGnuTar() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const versionOutput = yield checkVersion("tar");
+        return versionOutput.toLowerCase().includes("gnu tar");
+    });
+}
+exports.useGnuTar = useGnuTar;
 function getTarPath(args) {
     return __awaiter(this, void 0, void 0, function* () {
         // Explicitly use BSD Tar on Windows
@@ -4991,7 +5005,7 @@ function getTarPath(args) {
             if (fs_1.existsSync(systemTar)) {
                 return systemTar;
             }
-            else if (isGnuTar()) {
+            else if (yield exports.useGnuTar()) {
                 args.push("--force-local");
             }
         }
@@ -5002,7 +5016,7 @@ function execTar(args, cwd) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield exec_1.exec(`"${yield getTarPath(args)}"`, args, { cwd: cwd });
+            yield exec_1.exec(`${yield getTarPath(args)}`, args, { cwd: cwd });
         }
         catch (error) {
             throw new Error(`Tar failed with error: ${(_a = error) === null || _a === void 0 ? void 0 : _a.message}`);
@@ -5019,7 +5033,8 @@ function extractTar(archivePath) {
         const workingDirectory = getWorkingDirectory();
         yield io.mkdirP(workingDirectory);
         const args = [
-            "-xz",
+            "-x",
+            (yield exports.useZstd()) ? `--use-compress-program="zstd -d"` : "-z",
             "-f",
             archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
@@ -5035,9 +5050,11 @@ function createTar(archiveFolder, sourceDirectories) {
         // Write source directories to manifest.txt to avoid command length limits
         const manifestFilename = "manifest.txt";
         fs_1.writeFileSync(path.join(archiveFolder, manifestFilename), sourceDirectories.join("\n"));
+        // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
         const workingDirectory = getWorkingDirectory();
         const args = [
-            "-cz",
+            "-c",
+            (yield exports.useZstd()) ? `--use-compress-program="zstd -T0"` : "-z",
             "-f",
             constants_1.CacheFilename.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
