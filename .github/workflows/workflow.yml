@@ -1,5 +1,8 @@
 name: Tests
 
+env:
+  ACTIONS_STEP_DEBUG: true
+  
 on:
   pull_request:
     branches:
