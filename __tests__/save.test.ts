@@ -201,20 +201,27 @@ test("save with large cache outputs warning", async () => {
     jest.spyOn(actionUtils, "getArchiveFileSize").mockImplementationOnce(() => {
         return cacheSize;
     });
+    const useZstd = false;
+    const useZstdMock = jest
+        .spyOn(actionUtils, "useZstd")
+        .mockReturnValue(Promise.resolve(useZstd));
 
     await run();
 
     const archiveFolder = "/foo/bar";
 
     expect(createTarMock).toHaveBeenCalledTimes(1);
-    expect(createTarMock).toHaveBeenCalledWith(archiveFolder, cachePaths);
-
+    expect(createTarMock).toHaveBeenCalledWith(
+        archiveFolder,
+        cachePaths,
+        useZstd
+    );
     expect(logWarningMock).toHaveBeenCalledTimes(1);
     expect(logWarningMock).toHaveBeenCalledWith(
         "Cache size of ~6144 MB (6442450944 B) is over the 5GB limit, not saving cache."
     );
-
     expect(failedMock).toHaveBeenCalledTimes(0);
+    expect(useZstdMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with reserve cache failure outputs warning", async () => {
@@ -250,13 +257,18 @@ test("save with reserve cache failure outputs warning", async () => {
         });
 
     const createTarMock = jest.spyOn(tar, "createTar");
-
     const saveCacheMock = jest.spyOn(cacheHttpClient, "saveCache");
+    const useZstd = true;
+    const useZstdMock = jest
+        .spyOn(actionUtils, "useZstd")
+        .mockReturnValue(Promise.resolve(useZstd));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
-    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey);
+    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
+        useZstd: useZstd
+    });
 
     expect(infoMock).toHaveBeenCalledWith(
         `Unable to reserve cache with key ${primaryKey}, another job may be creating this cache.`
@@ -266,6 +278,7 @@ test("save with reserve cache failure outputs warning", async () => {
     expect(saveCacheMock).toHaveBeenCalledTimes(0);
     expect(logWarningMock).toHaveBeenCalledTimes(0);
     expect(failedMock).toHaveBeenCalledTimes(0);
+    expect(useZstdMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with server error outputs warning", async () => {
@@ -308,17 +321,27 @@ test("save with server error outputs warning", async () => {
         .mockImplementationOnce(() => {
             throw new Error("HTTP Error Occurred");
         });
+    const useZstd = true;
+    const useZstdMock = jest
+        .spyOn(actionUtils, "useZstd")
+        .mockReturnValue(Promise.resolve(useZstd));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
-    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey);
+    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
+        useZstd: useZstd
+    });
 
     const archiveFolder = "/foo/bar";
-    const archiveFile = path.join(archiveFolder, CacheFilename);
+    const archiveFile = path.join(archiveFolder, CacheFilename.Zstd);
 
     expect(createTarMock).toHaveBeenCalledTimes(1);
-    expect(createTarMock).toHaveBeenCalledWith(archiveFolder, cachePaths);
+    expect(createTarMock).toHaveBeenCalledWith(
+        archiveFolder,
+        cachePaths,
+        useZstd
+    );
 
     expect(saveCacheMock).toHaveBeenCalledTimes(1);
     expect(saveCacheMock).toHaveBeenCalledWith(cacheId, archiveFile);
@@ -327,6 +350,7 @@ test("save with server error outputs warning", async () => {
     expect(logWarningMock).toHaveBeenCalledWith("HTTP Error Occurred");
 
     expect(failedMock).toHaveBeenCalledTimes(0);
+    expect(useZstdMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with valid inputs uploads a cache", async () => {
@@ -364,20 +388,31 @@ test("save with valid inputs uploads a cache", async () => {
     const createTarMock = jest.spyOn(tar, "createTar");
 
     const saveCacheMock = jest.spyOn(cacheHttpClient, "saveCache");
+    const useZstd = true;
+    const useZstdMock = jest
+        .spyOn(actionUtils, "useZstd")
+        .mockReturnValue(Promise.resolve(useZstd));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
-    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey);
+    expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
+        useZstd: useZstd
+    });
 
     const archiveFolder = "/foo/bar";
-    const archiveFile = path.join(archiveFolder, CacheFilename);
+    const archiveFile = path.join(archiveFolder, CacheFilename.Zstd);
 
     expect(createTarMock).toHaveBeenCalledTimes(1);
-    expect(createTarMock).toHaveBeenCalledWith(archiveFolder, cachePaths);
+    expect(createTarMock).toHaveBeenCalledWith(
+        archiveFolder,
+        cachePaths,
+        useZstd
+    );
 
     expect(saveCacheMock).toHaveBeenCalledTimes(1);
     expect(saveCacheMock).toHaveBeenCalledWith(cacheId, archiveFile);
 
     expect(failedMock).toHaveBeenCalledTimes(0);
+    expect(useZstdMock).toHaveBeenCalledTimes(1);
 });

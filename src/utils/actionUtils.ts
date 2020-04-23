@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import * as exec from "@actions/exec";
 import * as glob from "@actions/glob";
 import * as io from "@actions/io";
 import * as fs from "fs";
@@ -115,4 +116,32 @@ export function isValidEvent(): boolean {
 
 export function unlinkFile(path: fs.PathLike): Promise<void> {
     return util.promisify(fs.unlink)(path);
+}
+
+async function checkVersion(app: string): Promise<string> {
+    core.debug(`Checking ${app} --version`);
+    let versionOutput = "";
+    await exec.exec(`${app} --version`, [], {
+        ignoreReturnCode: true,
+        silent: true,
+        listeners: {
+            stdout: (data: Buffer): string =>
+                (versionOutput += data.toString()),
+            stderr: (data: Buffer): string => (versionOutput += data.toString())
+        }
+    });
+
+    versionOutput = versionOutput.trim();
+    core.debug(versionOutput);
+    return versionOutput;
+}
+
+export async function useZstd(): Promise<boolean> {
+    const versionOutput = await checkVersion("zstd");
+    return versionOutput.toLowerCase().includes("zstd command line interface");
+}
+
+export async function useGnuTar(): Promise<boolean> {
+    const versionOutput = await checkVersion("tar");
+    return versionOutput.toLowerCase().includes("gnu tar");
 }

@@ -12,6 +12,7 @@ import * as fs from "fs";
 import { Inputs } from "./constants";
 import {
     ArtifactCacheEntry,
+    CacheOptions,
     CommitCacheRequest,
     ReserveCacheRequest,
     ReserveCacheResponse
@@ -82,12 +83,11 @@ function createHttpClient(): HttpClient {
     );
 }
 
-export function getCacheVersion(): string {
+export function getCacheVersion(useZstd?: boolean): string {
     // Add salt to cache version to support breaking changes in cache entry
-    const components = [
-        core.getInput(Inputs.Path, { required: true }),
-        versionSalt
-    ];
+    const components = [core.getInput(Inputs.Path, { required: true })].concat(
+        useZstd ? ["zstd", versionSalt] : versionSalt
+    );
 
     return crypto
         .createHash("sha256")
@@ -96,10 +96,11 @@ export function getCacheVersion(): string {
 }
 
 export async function getCacheEntry(
-    keys: string[]
+    keys: string[],
+    options?: CacheOptions
 ): Promise<ArtifactCacheEntry | null> {
     const httpClient = createHttpClient();
-    const version = getCacheVersion();
+    const version = getCacheVersion(options?.useZstd);
     const resource = `cache?keys=${encodeURIComponent(
         keys.join(",")
     )}&version=${version}`;
@@ -148,9 +149,12 @@ export async function downloadCache(
 }
 
 // Reserve Cache
-export async function reserveCache(key: string): Promise<number> {
+export async function reserveCache(
+    key: string,
+    options?: CacheOptions
+): Promise<number> {
     const httpClient = createHttpClient();
-    const version = getCacheVersion();
+    const version = getCacheVersion(options?.useZstd);
 
     const reserveCacheRequest: ReserveCacheRequest = {
         key,

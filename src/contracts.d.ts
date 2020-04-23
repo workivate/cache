@@ -17,3 +17,7 @@ export interface ReserveCacheRequest {
 export interface ReserveCacheResponse {
     cacheId: number;
 }
+
+export interface CacheOptions {
+    useZstd?: boolean;
+}

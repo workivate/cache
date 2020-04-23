@@ -35,8 +35,12 @@ async function run(): Promise<void> {
             return;
         }
 
+        const useZstd = await utils.useZstd();
+
         core.debug("Reserving Cache");
-        const cacheId = await cacheHttpClient.reserveCache(primaryKey);
+        const cacheId = await cacheHttpClient.reserveCache(primaryKey, {
+            useZstd: useZstd
+        });
         if (cacheId == -1) {
             core.info(
                 `Unable to reserve cache with key ${primaryKey}, another job may be creating this cache.`
@@ -55,10 +59,14 @@ async function run(): Promise<void> {
         core.debug(`${JSON.stringify(cachePaths)}`);
 
         const archiveFolder = await utils.createTempDirectory();
-        const archivePath = path.join(archiveFolder, CacheFilename);
+        const archivePath = path.join(
+            archiveFolder,
+            useZstd ? CacheFilename.Zstd : CacheFilename.Gzip
+        );
+
         core.debug(`Archive Path: ${archivePath}`);
 
-        await createTar(archiveFolder, cachePaths);
+        await createTar(archiveFolder, cachePaths, useZstd);
 
         const fileSizeLimit = 5 * 1024 * 1024 * 1024; // 5GB per repo limit
         const archiveFileSize = utils.getArchiveFileSize(archivePath);

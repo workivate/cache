@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as path from "path";
 
 import * as cacheHttpClient from "./cacheHttpClient";
-import { Events, Inputs, State } from "./constants";
+import { CacheFilename, Events, Inputs, State } from "./constants";
 import { extractTar } from "./tar";
 import * as utils from "./utils/actionUtils";
 
@@ -54,8 +54,12 @@ async function run(): Promise<void> {
             }
         }
 
+        const useZstd = await utils.useZstd();
+
         try {
-            const cacheEntry = await cacheHttpClient.getCacheEntry(keys);
+            const cacheEntry = await cacheHttpClient.getCacheEntry(keys, {
+                useZstd: useZstd
+            });
             if (!cacheEntry?.archiveLocation) {
                 core.info(`Cache not found for input keys: ${keys.join(", ")}`);
                 return;
@@ -63,7 +67,7 @@ async function run(): Promise<void> {
 
             const archivePath = path.join(
                 await utils.createTempDirectory(),
-                "cache.tgz"
+                useZstd ? CacheFilename.Zstd : CacheFilename.Gzip
             );
             core.debug(`Archive Path: ${archivePath}`);
 
@@ -84,7 +88,7 @@ async function run(): Promise<void> {
                     )} MB (${archiveFileSize} B)`
                 );
 
-                await extractTar(archivePath);
+                await extractTar(archivePath, useZstd);
             } finally {
                 // Try to delete the archive to save space
                 try {
