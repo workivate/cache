@@ -4499,7 +4499,7 @@ var Events;
 var CacheFilename;
 (function (CacheFilename) {
     CacheFilename["Gzip"] = "cache.tgz";
-    CacheFilename["Zstd"] = "cache.zst";
+    CacheFilename["Zstd"] = "cache.tzst";
 })(CacheFilename = exports.CacheFilename || (exports.CacheFilename = {}));
 
 

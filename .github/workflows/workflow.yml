@@ -1,8 +1,5 @@
 name: Tests
 
-env:
-  ACTIONS_STEP_DEBUG: ${{ secrets.ACTIONS_STEP_DEBUG }}
-
 on:
   pull_request:
     branches:

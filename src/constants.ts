@@ -21,5 +21,5 @@ export enum Events {
 
 export enum CacheFilename {
     Gzip = "cache.tgz",
-    Zstd = "cache.zst"
+    Zstd = "cache.tzst"
 }
