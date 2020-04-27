@@ -3304,7 +3304,7 @@ function unlinkFile(path) {
 exports.unlinkFile = unlinkFile;
 function checkVersion(app) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Checking ${app} --version`);
+        core.info(`Checking ${app} --version`);
         let versionOutput = "";
         yield exec.exec(`${app} --version`, [], {
             ignoreReturnCode: true,
@@ -3315,7 +3315,7 @@ function checkVersion(app) {
             }
         });
         versionOutput = versionOutput.trim();
-        core.debug(versionOutput);
+        core.info(versionOutput);
         return versionOutput;
     });
 }

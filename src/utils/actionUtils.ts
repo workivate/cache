@@ -119,7 +119,7 @@ export function unlinkFile(path: fs.PathLike): Promise<void> {
 }
 
 async function checkVersion(app: string): Promise<string> {
-    core.debug(`Checking ${app} --version`);
+    core.info(`Checking ${app} --version`);
     let versionOutput = "";
     await exec.exec(`${app} --version`, [], {
         ignoreReturnCode: true,
@@ -132,7 +132,7 @@ async function checkVersion(app: string): Promise<string> {
     });
 
     versionOutput = versionOutput.trim();
-    core.debug(versionOutput);
+    core.info(versionOutput);
     return versionOutput;
 }
 
