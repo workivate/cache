@@ -50,9 +50,8 @@ test("zstd extract tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            "-x",
             `--use-compress-program="zstd -d"`,
-            "-f",
+            "-xf",
             IS_WINDOWS ? archivePath.replace(/\\/g, "/") : archivePath,
             "-P",
             "-C",
@@ -80,9 +79,8 @@ test("gzip extract tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            "-x",
             "-z",
-            "-f",
+            "-xf",
             IS_WINDOWS ? archivePath.replace(/\\/g, "/") : archivePath,
             "-P",
             "-C",
@@ -110,9 +108,8 @@ test("gzip extract GNU tar on windows", async () => {
         expect(execMock).toHaveBeenCalledWith(
             `tar`,
             [
-                "-x",
                 "-z",
-                "-f",
+                "-xf",
                 archivePath.replace(/\\/g, "/"),
                 "-P",
                 "-C",
@@ -143,9 +140,8 @@ test("zstd create tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            "-c",
-            `--use-compress-program="zstd -T0"`,
-            "-f",
+            `--use-compress-program="zstd"`,
+            "-cf",
             IS_WINDOWS
                 ? CacheFilename.Zstd.replace(/\\/g, "/")
                 : CacheFilename.Zstd,
@@ -180,9 +176,8 @@ test("gzip create tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            "-c",
             "-z",
-            "-f",
+            "-cf",
             IS_WINDOWS
                 ? CacheFilename.Gzip.replace(/\\/g, "/")
                 : CacheFilename.Gzip,

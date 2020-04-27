@@ -5015,9 +5015,8 @@ function extractTar(archivePath, useZstd) {
         const workingDirectory = getWorkingDirectory();
         yield io.mkdirP(workingDirectory);
         const args = [
-            "-x",
             useZstd ? `--use-compress-program="zstd -d"` : "-z",
-            "-f",
+            "-xf",
             archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
             "-C",
@@ -5036,9 +5035,8 @@ function createTar(archiveFolder, sourceDirectories, useZstd) {
         // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
         const workingDirectory = getWorkingDirectory();
         const args = [
-            "-c",
-            useZstd ? `--use-compress-program="zstd -T0"` : "-z",
-            "-f",
+            useZstd ? `--use-compress-program="zstd"` : "-z",
+            "-cf",
             cacheFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
             "-C",
