@@ -3304,18 +3304,23 @@ function unlinkFile(path) {
 exports.unlinkFile = unlinkFile;
 function checkVersion(app) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Checking ${app} --version`);
+        core.debug(`Checking ${app} --version`);
         let versionOutput = "";
-        yield exec.exec(`${app} --version`, [], {
-            ignoreReturnCode: true,
-            silent: true,
-            listeners: {
-                stdout: (data) => (versionOutput += data.toString()),
-                stderr: (data) => (versionOutput += data.toString())
-            }
-        });
+        try {
+            yield exec.exec(`${app} --version`, [], {
+                ignoreReturnCode: true,
+                silent: true,
+                listeners: {
+                    stdout: (data) => (versionOutput += data.toString()),
+                    stderr: (data) => (versionOutput += data.toString())
+                }
+            });
+        }
+        catch (err) {
+            core.debug(err.message);
+        }
         versionOutput = versionOutput.trim();
-        core.info(versionOutput);
+        core.debug(versionOutput);
         return versionOutput;
     });
 }
@@ -5015,7 +5020,7 @@ function extractTar(archivePath, useZstd) {
         const workingDirectory = getWorkingDirectory();
         yield io.mkdirP(workingDirectory);
         const args = [
-            useZstd ? `--use-compress-program="zstd -d"` : "-z",
+            ...(useZstd ? ["--use-compress-program", "zstd -d"] : ["-z"]),
             "-xf",
             archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
@@ -5035,7 +5040,7 @@ function createTar(archiveFolder, sourceDirectories, useZstd) {
         // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
         const workingDirectory = getWorkingDirectory();
         const args = [
-            useZstd ? `--use-compress-program="zstd"` : "-z",
+            ...(useZstd ? ["--use-compress-program", "zstd -T0"] : ["-z"]),
             "-cf",
             cacheFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",

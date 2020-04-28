@@ -40,7 +40,7 @@ export async function extractTar(
     const workingDirectory = getWorkingDirectory();
     await io.mkdirP(workingDirectory);
     const args = [
-        useZstd ? `--use-compress-program="zstd -d"` : "-z",
+        ...(useZstd ? ["--use-compress-program", "zstd -d"] : ["-z"]),
         "-xf",
         archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",
@@ -65,7 +65,7 @@ export async function createTar(
     // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
     const workingDirectory = getWorkingDirectory();
     const args = [
-        useZstd ? `--use-compress-program="zstd"` : "-z",
+        ...(useZstd ? ["--use-compress-program", "zstd -T0"] : ["-z"]),
         "-cf",
         cacheFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",

@@ -119,20 +119,25 @@ export function unlinkFile(path: fs.PathLike): Promise<void> {
 }
 
 async function checkVersion(app: string): Promise<string> {
-    core.info(`Checking ${app} --version`);
+    core.debug(`Checking ${app} --version`);
     let versionOutput = "";
-    await exec.exec(`${app} --version`, [], {
-        ignoreReturnCode: true,
-        silent: true,
-        listeners: {
-            stdout: (data: Buffer): string =>
-                (versionOutput += data.toString()),
-            stderr: (data: Buffer): string => (versionOutput += data.toString())
-        }
-    });
+    
+    try {
+        await exec.exec(`${app} --version`, [], {
+            ignoreReturnCode: true,
+            silent: true,
+            listeners: {
+                stdout: (data: Buffer): string =>
+                    (versionOutput += data.toString()),
+                stderr: (data: Buffer): string => (versionOutput += data.toString())
+            }
+        });
+    } catch (err) {
+        core.debug(err.message);
+    }
 
     versionOutput = versionOutput.trim();
-    core.info(versionOutput);
+    core.debug(versionOutput);
     return versionOutput;
 }
 

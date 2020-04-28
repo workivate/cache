@@ -50,7 +50,8 @@ test("zstd extract tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            `--use-compress-program="zstd -d"`,
+            "--use-compress-program",
+            "zstd -d",
             "-xf",
             IS_WINDOWS ? archivePath.replace(/\\/g, "/") : archivePath,
             "-P",
@@ -140,7 +141,8 @@ test("zstd create tar", async () => {
     expect(execMock).toHaveBeenCalledWith(
         `${tarPath}`,
         [
-            `--use-compress-program="zstd"`,
+            "--use-compress-program",
+            "zstd -T0",
             "-cf",
             IS_WINDOWS
                 ? CacheFilename.Zstd.replace(/\\/g, "/")
