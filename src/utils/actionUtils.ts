@@ -8,11 +8,11 @@ import * as util from "util";
 import * as uuidV4 from "uuid/v4";
 
 import {
+    CacheFilename,
     CompressionMethod,
     Events,
     Outputs,
-    State,
-    CacheFilename
+    State
 } from "../constants";
 import { ArtifactCacheEntry } from "../contracts";
 
