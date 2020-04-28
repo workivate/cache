@@ -9,7 +9,7 @@ import {
 import * as crypto from "crypto";
 import * as fs from "fs";
 
-import { Inputs } from "./constants";
+import { CompressionMethod, Inputs } from "./constants";
 import {
     ArtifactCacheEntry,
     CacheOptions,
@@ -83,10 +83,12 @@ function createHttpClient(): HttpClient {
     );
 }
 
-export function getCacheVersion(useZstd?: boolean): string {
+export function getCacheVersion(compressionMethod?: CompressionMethod): string {
     // Add salt to cache version to support breaking changes in cache entry
     const components = [core.getInput(Inputs.Path, { required: true })].concat(
-        useZstd ? ["zstd", versionSalt] : versionSalt
+        compressionMethod == CompressionMethod.Zstd
+            ? [compressionMethod, versionSalt]
+            : versionSalt
     );
 
     return crypto
@@ -100,7 +102,7 @@ export async function getCacheEntry(
     options?: CacheOptions
 ): Promise<ArtifactCacheEntry | null> {
     const httpClient = createHttpClient();
-    const version = getCacheVersion(options?.useZstd);
+    const version = getCacheVersion(options?.compressionMethod);
     const resource = `cache?keys=${encodeURIComponent(
         keys.join(",")
     )}&version=${version}`;
@@ -154,7 +156,7 @@ export async function reserveCache(
     options?: CacheOptions
 ): Promise<number> {
     const httpClient = createHttpClient();
-    const version = getCacheVersion(options?.useZstd);
+    const version = getCacheVersion(options?.compressionMethod);
 
     const reserveCacheRequest: ReserveCacheRequest = {
         key,

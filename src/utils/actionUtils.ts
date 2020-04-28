@@ -7,7 +7,13 @@ import * as path from "path";
 import * as util from "util";
 import * as uuidV4 from "uuid/v4";
 
-import { Events, Outputs, State } from "../constants";
+import {
+    CompressionMethod,
+    Events,
+    Outputs,
+    State,
+    CacheFilename
+} from "../constants";
 import { ArtifactCacheEntry } from "../contracts";
 
 // From https://github.com/actions/toolkit/blob/master/packages/tool-cache/src/tool-cache.ts#L23
@@ -128,7 +134,7 @@ async function checkVersion(app: string): Promise<string> {
             listeners: {
                 stdout: (data: Buffer): string =>
                     (versionOutput += data.toString()),
-                stderr: (data: Buffer): string => 
+                stderr: (data: Buffer): string =>
                     (versionOutput += data.toString())
             }
         });
@@ -141,9 +147,17 @@ async function checkVersion(app: string): Promise<string> {
     return versionOutput;
 }
 
-export async function useZstd(): Promise<boolean> {
+export async function getCompressionMethod(): Promise<CompressionMethod> {
     const versionOutput = await checkVersion("zstd");
-    return versionOutput.toLowerCase().includes("zstd command line interface");
+    return versionOutput.toLowerCase().includes("zstd command line interface")
+        ? CompressionMethod.Zstd
+        : CompressionMethod.Gzip;
+}
+
+export function getCacheFileName(compressionMethod: CompressionMethod): string {
+    return compressionMethod == CompressionMethod.Zstd
+        ? CacheFilename.Zstd
+        : CacheFilename.Gzip;
 }
 
 export async function useGnuTar(): Promise<boolean> {

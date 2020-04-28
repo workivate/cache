@@ -3,7 +3,7 @@ import * as io from "@actions/io";
 import { existsSync, writeFileSync } from "fs";
 import * as path from "path";
 
-import { CacheFilename } from "./constants";
+import { CompressionMethod } from "./constants";
 import * as utils from "./utils/actionUtils";
 
 async function getTarPath(args: string[]): Promise<string> {
@@ -34,13 +34,15 @@ function getWorkingDirectory(): string {
 
 export async function extractTar(
     archivePath: string,
-    useZstd: boolean
+    compressionMethod: CompressionMethod
 ): Promise<void> {
     // Create directory to extract tar into
     const workingDirectory = getWorkingDirectory();
     await io.mkdirP(workingDirectory);
     const args = [
-        ...(useZstd ? ["--use-compress-program", "zstd -d"] : ["-z"]),
+        ...(compressionMethod == CompressionMethod.Zstd
+            ? ["--use-compress-program", "zstd -d"]
+            : ["-z"]),
         "-xf",
         archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",
@@ -53,11 +55,11 @@ export async function extractTar(
 export async function createTar(
     archiveFolder: string,
     sourceDirectories: string[],
-    useZstd: boolean
+    compressionMethod: CompressionMethod
 ): Promise<void> {
     // Write source directories to manifest.txt to avoid command length limits
     const manifestFilename = "manifest.txt";
-    const cacheFileName = useZstd ? CacheFilename.Zstd : CacheFilename.Gzip;
+    const cacheFileName = utils.getCacheFileName(compressionMethod);
     writeFileSync(
         path.join(archiveFolder, manifestFilename),
         sourceDirectories.join("\n")
@@ -65,7 +67,9 @@ export async function createTar(
     // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
     const workingDirectory = getWorkingDirectory();
     const args = [
-        ...(useZstd ? ["--use-compress-program", "zstd -T0"] : ["-z"]),
+        ...(compressionMethod == CompressionMethod.Zstd
+            ? ["--use-compress-program", "zstd -T0"]
+            : ["-z"]),
         "-cf",
         cacheFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
         "-P",

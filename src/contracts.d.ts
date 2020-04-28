@@ -1,3 +1,5 @@
+import { CompressionMethod } from "./constants";
+
 export interface ArtifactCacheEntry {
     cacheKey?: string;
     scope?: string;
@@ -19,5 +21,5 @@ export interface ReserveCacheResponse {
 }
 
 export interface CacheOptions {
-    useZstd?: boolean;
+    compressionMethod?: CompressionMethod;
 }

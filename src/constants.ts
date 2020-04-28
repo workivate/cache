@@ -23,3 +23,8 @@ export enum CacheFilename {
     Gzip = "cache.tgz",
     Zstd = "cache.tzst"
 }
+
+export enum CompressionMethod {
+    Gzip = "gzip",
+    Zstd = "zstd"
+}

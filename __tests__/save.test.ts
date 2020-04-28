@@ -2,7 +2,12 @@ import * as core from "@actions/core";
 import * as path from "path";
 
 import * as cacheHttpClient from "../src/cacheHttpClient";
-import { CacheFilename, Events, Inputs } from "../src/constants";
+import {
+    CacheFilename,
+    CompressionMethod,
+    Events,
+    Inputs
+} from "../src/constants";
 import { ArtifactCacheEntry } from "../src/contracts";
 import run from "../src/save";
 import * as tar from "../src/tar";
@@ -49,6 +54,11 @@ beforeAll(() => {
 
     jest.spyOn(actionUtils, "createTempDirectory").mockImplementation(() => {
         return Promise.resolve("/foo/bar");
+    });
+
+    jest.spyOn(actionUtils, "getCacheFileName").mockImplementation(cm => {
+        const actualUtils = jest.requireActual("../src/utils/actionUtils");
+        return actualUtils.getCacheFileName(cm);
     });
 });
 
@@ -201,10 +211,10 @@ test("save with large cache outputs warning", async () => {
     jest.spyOn(actionUtils, "getArchiveFileSize").mockImplementationOnce(() => {
         return cacheSize;
     });
-    const useZstd = false;
-    const useZstdMock = jest
-        .spyOn(actionUtils, "useZstd")
-        .mockReturnValue(Promise.resolve(useZstd));
+    const compression = CompressionMethod.Gzip;
+    const getCompressionMock = jest
+        .spyOn(actionUtils, "getCompressionMethod")
+        .mockReturnValue(Promise.resolve(compression));
 
     await run();
 
@@ -214,14 +224,14 @@ test("save with large cache outputs warning", async () => {
     expect(createTarMock).toHaveBeenCalledWith(
         archiveFolder,
         cachePaths,
-        useZstd
+        compression
     );
     expect(logWarningMock).toHaveBeenCalledTimes(1);
     expect(logWarningMock).toHaveBeenCalledWith(
         "Cache size of ~6144 MB (6442450944 B) is over the 5GB limit, not saving cache."
     );
     expect(failedMock).toHaveBeenCalledTimes(0);
-    expect(useZstdMock).toHaveBeenCalledTimes(1);
+    expect(getCompressionMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with reserve cache failure outputs warning", async () => {
@@ -258,16 +268,16 @@ test("save with reserve cache failure outputs warning", async () => {
 
     const createTarMock = jest.spyOn(tar, "createTar");
     const saveCacheMock = jest.spyOn(cacheHttpClient, "saveCache");
-    const useZstd = true;
-    const useZstdMock = jest
-        .spyOn(actionUtils, "useZstd")
-        .mockReturnValue(Promise.resolve(useZstd));
+    const compression = CompressionMethod.Zstd;
+    const getCompressionMock = jest
+        .spyOn(actionUtils, "getCompressionMethod")
+        .mockReturnValue(Promise.resolve(compression));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
     expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
-        useZstd: useZstd
+        compressionMethod: compression
     });
 
     expect(infoMock).toHaveBeenCalledWith(
@@ -278,7 +288,7 @@ test("save with reserve cache failure outputs warning", async () => {
     expect(saveCacheMock).toHaveBeenCalledTimes(0);
     expect(logWarningMock).toHaveBeenCalledTimes(0);
     expect(failedMock).toHaveBeenCalledTimes(0);
-    expect(useZstdMock).toHaveBeenCalledTimes(1);
+    expect(getCompressionMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with server error outputs warning", async () => {
@@ -321,16 +331,16 @@ test("save with server error outputs warning", async () => {
         .mockImplementationOnce(() => {
             throw new Error("HTTP Error Occurred");
         });
-    const useZstd = true;
-    const useZstdMock = jest
-        .spyOn(actionUtils, "useZstd")
-        .mockReturnValue(Promise.resolve(useZstd));
+    const compression = CompressionMethod.Zstd;
+    const getCompressionMock = jest
+        .spyOn(actionUtils, "getCompressionMethod")
+        .mockReturnValue(Promise.resolve(compression));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
     expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
-        useZstd: useZstd
+        compressionMethod: compression
     });
 
     const archiveFolder = "/foo/bar";
@@ -340,7 +350,7 @@ test("save with server error outputs warning", async () => {
     expect(createTarMock).toHaveBeenCalledWith(
         archiveFolder,
         cachePaths,
-        useZstd
+        compression
     );
 
     expect(saveCacheMock).toHaveBeenCalledTimes(1);
@@ -350,7 +360,7 @@ test("save with server error outputs warning", async () => {
     expect(logWarningMock).toHaveBeenCalledWith("HTTP Error Occurred");
 
     expect(failedMock).toHaveBeenCalledTimes(0);
-    expect(useZstdMock).toHaveBeenCalledTimes(1);
+    expect(getCompressionMock).toHaveBeenCalledTimes(1);
 });
 
 test("save with valid inputs uploads a cache", async () => {
@@ -388,16 +398,16 @@ test("save with valid inputs uploads a cache", async () => {
     const createTarMock = jest.spyOn(tar, "createTar");
 
     const saveCacheMock = jest.spyOn(cacheHttpClient, "saveCache");
-    const useZstd = true;
-    const useZstdMock = jest
-        .spyOn(actionUtils, "useZstd")
-        .mockReturnValue(Promise.resolve(useZstd));
+    const compression = CompressionMethod.Zstd;
+    const getCompressionMock = jest
+        .spyOn(actionUtils, "getCompressionMethod")
+        .mockReturnValue(Promise.resolve(compression));
 
     await run();
 
     expect(reserveCacheMock).toHaveBeenCalledTimes(1);
     expect(reserveCacheMock).toHaveBeenCalledWith(primaryKey, {
-        useZstd: useZstd
+        compressionMethod: compression
     });
 
     const archiveFolder = "/foo/bar";
@@ -407,12 +417,12 @@ test("save with valid inputs uploads a cache", async () => {
     expect(createTarMock).toHaveBeenCalledWith(
         archiveFolder,
         cachePaths,
-        useZstd
+        compression
     );
 
     expect(saveCacheMock).toHaveBeenCalledTimes(1);
     expect(saveCacheMock).toHaveBeenCalledWith(cacheId, archiveFile);
 
     expect(failedMock).toHaveBeenCalledTimes(0);
-    expect(useZstdMock).toHaveBeenCalledTimes(1);
+    expect(getCompressionMock).toHaveBeenCalledTimes(1);
 });

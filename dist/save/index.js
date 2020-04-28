@@ -2234,9 +2234,11 @@ function createHttpClient() {
     const bearerCredentialHandler = new auth_1.BearerCredentialHandler(token);
     return new http_client_1.HttpClient("actions/cache", [bearerCredentialHandler], getRequestOptions());
 }
-function getCacheVersion(useZstd) {
+function getCacheVersion(compressionMethod) {
     // Add salt to cache version to support breaking changes in cache entry
-    const components = [core.getInput(constants_1.Inputs.Path, { required: true })].concat(useZstd ? ["zstd", versionSalt] : versionSalt);
+    const components = [core.getInput(constants_1.Inputs.Path, { required: true })].concat(compressionMethod == constants_1.CompressionMethod.Zstd
+        ? [compressionMethod, versionSalt]
+        : versionSalt);
     return crypto
         .createHash("sha256")
         .update(components.join("|"))
@@ -2247,7 +2249,7 @@ function getCacheEntry(keys, options) {
     var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         const httpClient = createHttpClient();
-        const version = getCacheVersion((_a = options) === null || _a === void 0 ? void 0 : _a.useZstd);
+        const version = getCacheVersion((_a = options) === null || _a === void 0 ? void 0 : _a.compressionMethod);
         const resource = `cache?keys=${encodeURIComponent(keys.join(","))}&version=${version}`;
         const response = yield httpClient.getJson(getCacheApiUrl(resource));
         if (response.statusCode === 204) {
@@ -2291,7 +2293,7 @@ function reserveCache(key, options) {
     var _a, _b, _c, _d;
     return __awaiter(this, void 0, void 0, function* () {
         const httpClient = createHttpClient();
-        const version = getCacheVersion((_a = options) === null || _a === void 0 ? void 0 : _a.useZstd);
+        const version = getCacheVersion((_a = options) === null || _a === void 0 ? void 0 : _a.compressionMethod);
         const reserveCacheRequest = {
             key,
             version
@@ -3324,13 +3326,21 @@ function checkVersion(app) {
         return versionOutput;
     });
 }
-function useZstd() {
+function getCompressionMethod() {
     return __awaiter(this, void 0, void 0, function* () {
         const versionOutput = yield checkVersion("zstd");
-        return versionOutput.toLowerCase().includes("zstd command line interface");
+        return versionOutput.toLowerCase().includes("zstd command line interface")
+            ? constants_1.CompressionMethod.Zstd
+            : constants_1.CompressionMethod.Gzip;
     });
 }
-exports.useZstd = useZstd;
+exports.getCompressionMethod = getCompressionMethod;
+function getCacheFileName(compressionMethod) {
+    return compressionMethod == constants_1.CompressionMethod.Zstd
+        ? constants_1.CacheFilename.Zstd
+        : constants_1.CacheFilename.Gzip;
+}
+exports.getCacheFileName = getCacheFileName;
 function useGnuTar() {
     return __awaiter(this, void 0, void 0, function* () {
         const versionOutput = yield checkVersion("tar");
@@ -4522,10 +4532,10 @@ function run() {
                 core.info(`Cache hit occurred on the primary key ${primaryKey}, not saving cache.`);
                 return;
             }
-            const useZstd = yield utils.useZstd();
+            const compressionMethod = yield utils.getCompressionMethod();
             core.debug("Reserving Cache");
             const cacheId = yield cacheHttpClient.reserveCache(primaryKey, {
-                useZstd: useZstd
+                compressionMethod: compressionMethod
             });
             if (cacheId == -1) {
                 core.info(`Unable to reserve cache with key ${primaryKey}, another job may be creating this cache.`);
@@ -4539,9 +4549,9 @@ function run() {
             core.debug("Cache Paths:");
             core.debug(`${JSON.stringify(cachePaths)}`);
             const archiveFolder = yield utils.createTempDirectory();
-            const archivePath = path.join(archiveFolder, useZstd ? constants_1.CacheFilename.Zstd : constants_1.CacheFilename.Gzip);
+            const archivePath = path.join(archiveFolder, utils.getCacheFileName(compressionMethod));
             core.debug(`Archive Path: ${archivePath}`);
-            yield tar_1.createTar(archiveFolder, cachePaths, useZstd);
+            yield tar_1.createTar(archiveFolder, cachePaths, compressionMethod);
             const fileSizeLimit = 5 * 1024 * 1024 * 1024; // 5GB per repo limit
             const archiveFileSize = utils.getArchiveFileSize(archivePath);
             core.debug(`File Size: ${archiveFileSize}`);
@@ -4595,6 +4605,11 @@ var CacheFilename;
     CacheFilename["Gzip"] = "cache.tgz";
     CacheFilename["Zstd"] = "cache.tzst";
 })(CacheFilename = exports.CacheFilename || (exports.CacheFilename = {}));
+var CompressionMethod;
+(function (CompressionMethod) {
+    CompressionMethod["Gzip"] = "gzip";
+    CompressionMethod["Zstd"] = "zstd";
+})(CompressionMethod = exports.CompressionMethod || (exports.CompressionMethod = {}));
 
 
 /***/ }),
@@ -5014,13 +5029,15 @@ function getWorkingDirectory() {
     var _a;
     return _a = process.env["GITHUB_WORKSPACE"], (_a !== null && _a !== void 0 ? _a : process.cwd());
 }
-function extractTar(archivePath, useZstd) {
+function extractTar(archivePath, compressionMethod) {
     return __awaiter(this, void 0, void 0, function* () {
         // Create directory to extract tar into
         const workingDirectory = getWorkingDirectory();
         yield io.mkdirP(workingDirectory);
         const args = [
-            ...(useZstd ? ["--use-compress-program", "zstd -d"] : ["-z"]),
+            ...(compressionMethod == constants_1.CompressionMethod.Zstd
+                ? ["--use-compress-program", "zstd -d"]
+                : ["-z"]),
             "-xf",
             archivePath.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",
@@ -5031,16 +5048,18 @@ function extractTar(archivePath, useZstd) {
     });
 }
 exports.extractTar = extractTar;
-function createTar(archiveFolder, sourceDirectories, useZstd) {
+function createTar(archiveFolder, sourceDirectories, compressionMethod) {
     return __awaiter(this, void 0, void 0, function* () {
         // Write source directories to manifest.txt to avoid command length limits
         const manifestFilename = "manifest.txt";
-        const cacheFileName = useZstd ? constants_1.CacheFilename.Zstd : constants_1.CacheFilename.Gzip;
+        const cacheFileName = utils.getCacheFileName(compressionMethod);
         fs_1.writeFileSync(path.join(archiveFolder, manifestFilename), sourceDirectories.join("\n"));
         // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
         const workingDirectory = getWorkingDirectory();
         const args = [
-            ...(useZstd ? ["--use-compress-program", "zstd -T0"] : ["-z"]),
+            ...(compressionMethod == constants_1.CompressionMethod.Zstd
+                ? ["--use-compress-program", "zstd -T0"]
+                : ["-z"]),
             "-cf",
             cacheFileName.replace(new RegExp("\\" + path.sep, "g"), "/"),
             "-P",

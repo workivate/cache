@@ -2,7 +2,7 @@ import * as exec from "@actions/exec";
 import * as io from "@actions/io";
 import * as path from "path";
 
-import { CacheFilename } from "../src/constants";
+import { CacheFilename, CompressionMethod } from "../src/constants";
 import * as tar from "../src/tar";
 import * as utils from "../src/utils/actionUtils";
 
@@ -40,7 +40,7 @@ test("zstd extract tar", async () => {
         : "cache.tar";
     const workspace = process.env["GITHUB_WORKSPACE"];
 
-    await tar.extractTar(archivePath, true);
+    await tar.extractTar(archivePath, CompressionMethod.Zstd);
 
     expect(mkdirMock).toHaveBeenCalledWith(workspace);
     const tarPath = IS_WINDOWS
@@ -70,7 +70,7 @@ test("gzip extract tar", async () => {
         : "cache.tar";
     const workspace = process.env["GITHUB_WORKSPACE"];
 
-    await tar.extractTar(archivePath, false);
+    await tar.extractTar(archivePath, CompressionMethod.Gzip);
 
     expect(mkdirMock).toHaveBeenCalledWith(workspace);
     const tarPath = IS_WINDOWS
@@ -102,7 +102,7 @@ test("gzip extract GNU tar on windows", async () => {
         const archivePath = `${process.env["windir"]}\\fakepath\\cache.tar`;
         const workspace = process.env["GITHUB_WORKSPACE"];
 
-        await tar.extractTar(archivePath, false);
+        await tar.extractTar(archivePath, CompressionMethod.Gzip);
 
         expect(isGnuMock).toHaveBeenCalledTimes(1);
         expect(execMock).toHaveBeenCalledTimes(1);
@@ -131,7 +131,11 @@ test("zstd create tar", async () => {
 
     await fs.promises.mkdir(archiveFolder, { recursive: true });
 
-    await tar.createTar(archiveFolder, sourceDirectories, true);
+    await tar.createTar(
+        archiveFolder,
+        sourceDirectories,
+        CompressionMethod.Zstd
+    );
 
     const tarPath = IS_WINDOWS
         ? `${process.env["windir"]}\\System32\\tar.exe`
@@ -168,7 +172,11 @@ test("gzip create tar", async () => {
 
     await fs.promises.mkdir(archiveFolder, { recursive: true });
 
-    await tar.createTar(archiveFolder, sourceDirectories, false);
+    await tar.createTar(
+        archiveFolder,
+        sourceDirectories,
+        CompressionMethod.Gzip
+    );
 
     const tarPath = IS_WINDOWS
         ? `${process.env["windir"]}\\System32\\tar.exe`

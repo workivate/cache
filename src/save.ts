@@ -2,7 +2,7 @@ import * as core from "@actions/core";
 import * as path from "path";
 
 import * as cacheHttpClient from "./cacheHttpClient";
-import { CacheFilename, Events, Inputs, State } from "./constants";
+import { Events, Inputs, State } from "./constants";
 import { createTar } from "./tar";
 import * as utils from "./utils/actionUtils";
 
@@ -35,11 +35,11 @@ async function run(): Promise<void> {
             return;
         }
 
-        const useZstd = await utils.useZstd();
+        const compressionMethod = await utils.getCompressionMethod();
 
         core.debug("Reserving Cache");
         const cacheId = await cacheHttpClient.reserveCache(primaryKey, {
-            useZstd: useZstd
+            compressionMethod: compressionMethod
         });
         if (cacheId == -1) {
             core.info(
@@ -61,12 +61,12 @@ async function run(): Promise<void> {
         const archiveFolder = await utils.createTempDirectory();
         const archivePath = path.join(
             archiveFolder,
-            useZstd ? CacheFilename.Zstd : CacheFilename.Gzip
+            utils.getCacheFileName(compressionMethod)
         );
 
         core.debug(`Archive Path: ${archivePath}`);
 
-        await createTar(archiveFolder, cachePaths, useZstd);
+        await createTar(archiveFolder, cachePaths, compressionMethod);
 
         const fileSizeLimit = 5 * 1024 * 1024 * 1024; // 5GB per repo limit
         const archiveFileSize = utils.getArchiveFileSize(archivePath);
